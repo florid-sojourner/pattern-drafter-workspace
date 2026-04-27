@@ -1,0 +1,297 @@
+# Pattern Drafter Rebuild — Roadmap
+
+> **Purpose:** forward-looking plan. What's next, in what order, and when to stop.
+> **Pair with:** `wiki.md` (shared understanding), `rules.md` (invariants), `CLAUDE.md` (orientation). Canonical design doc: `~/.gstack/projects/pattern-drafter-workspace/justin-rebuild-design-20260423-144423.md`.
+
+## Current Status (2026-04-27)
+
+**Phase 2 closed; Phase 3 spec locked.** /plan-eng-review (CLEAR, 1 issue resolved) + /plan-design-review (CLEAR, 5/10 → 8.5/10) ran today. Architecture: separate Panel entity, start-node-id annotation addressing, R17 PREVENT-on-open lifecycle. Visual language: monochrome shape-and-weight annotations on the existing two-color Phase 2 vocabulary, skeuomorphic translucent-gray instruments, accordion Inspector. Knife deferred to its own /office-hours when 3.1–3.8 land. Chunk sequence (3.1–3.9) under Phase 3 below.
+
+204 tests green from Phase 2. Drafting table is feature-complete for the rebuild's stated scope: pan/zoom/grid/rulers, pen + select + guide pen + compass tools, panel selection, segment insertion, guide geometry with snapping, drafting-essentials bundle (panel move, compass center landmark, radial measurement, Ctrl-snap, clean circles), R16 no-forking topology, simple-polygon invariant for closed panels, JSON save/load, history, inspector. Per-edge SA rendering/editing moved to "Deferred Quality Concerns" (revisit during polish pass).
+
+Next: **Phase 3 chunk 3.1 — Panel entity + lifecycle invariants** (foundation for everything below). Standing assignment from 2026-04-23 (find one non-Justin hobby sewist) still pending.
+
+## Phase 0 — Discovery ✅
+
+- [x] Analyze sketch codebase (Explore agent report)
+- [x] Run /office-hours interview
+- [x] Lock premises (7 of them; see `wiki.md` → Premises)
+- [x] Select rebuild approach (B: clean rebuild, backend from day 1)
+- [x] Write canonical design doc
+- [x] Populate context files
+
+## Phase 1 — Rename + Scaffold ✅
+
+- [x] Tag sketch's current HEAD as `sketch-final` and push tag
+- [x] Rename local `pattern-drafter/` → `pattern-drafter-sketch/`
+- [x] Create fresh `pattern-drafter/` with `git init`, same remote
+- [x] Scaffold: Vite + React + TypeScript (pragmatic strict), Fastify server, Postgres via Docker Compose
+- [x] Port sketch's session handling (`server/src/session.ts`) verbatim
+- [x] Port migration runner + multi-stage Dockerfile shape + fly.toml (same app name)
+- [x] Clean-slate first commit on main, force-pushed to same GitHub repo
+- [x] Deploy shell to the same Fly.io app (verified: / returns 200, /healthz returns {ok:true})
+- [x] `CLAUDE.md` inside rebuild's `pattern-drafter/` pointing up to `../context/`
+- [x] Initial `users` + `sessions` schema migration in place (routes land in Phase 4)
+
+## Phase 2 — Drafting Table Core ✅ (2026-04-24)
+
+**Goal:** Justin can draw, edit, and manipulate geometry on a canvas that feels good.
+
+- [x] Unified document model (single source of truth; no dual stores — see `rules.md`)
+- [x] Canvas layers: panels / guides / selection / annotations
+- [x] Pan, zoom, grid, rulers, snap
+- [x] Drawing primitives: points, straight lines, cubic curves (with smooth handle control)
+- [x] Selection + move + delete with precise numeric input for positions/distances
+- [x] Undo/redo at the domain-op level (one operation = one undo entry)
+- [x] Port geometry primitives from sketch (Point / Path / Panel / BoundingBox) — already proven
+- [x] Local file save/load (JSON) for portability + dev convenience
+
+## Phase 2 — Follow-ups ✅ (2026-04-26)
+
+Drafting-table surface area that wasn't in Phase 2's original bullets but came up during the 2C→2F realignment, the taxonomy work, and the office-hours sessions on 2026-04-24 / 2026-04-25. Staying in Phase 2 — these are drafting-table concerns, not domain semantics. Per-edge SA rendering and editing UI moved to "Deferred Quality Concerns" — fit-and-finish, not load-bearing for the drafting table. Revisit during the polish pass before Phase 7.
+
+- [x] **Panel selection** — click on a closed panel's outline or fill selects the whole panel. Shift-click to add to/toggle selection. Delete removes selected panels + orphan nodes. Inspector shows panel info. (shipped 2026-04-24 as follow-up #1)
+- [x] **Insert-point on segment** — shipped 2026-04-24 as follow-up #2:
+  - [x] Pen-tool click on existing segment projects click to nearest point on segment, inserts node there. Active path untouched (conservative rule).
+  - [x] Inspector "Insert Point" button dispatches with t=0.5 (true bisect from selection UX).
+  - [x] Cubic shape preserved via de Casteljau split (test: max deviation <0.001 units along the reassembled curve).
+- [x] **Guide geometry** — drawable scaffolding for following book/video pattern recipes. Persistent. Shipped 2026-04-24 across three commits (3a pen + styling + rename, 3b compass, 3c snap).
+  - A **landmark** is simply a single-point guide mark — user-facing concept, *not a separate tool*. One Guide Pen click = a landmark dot; N clicks = a guide polyline/curve. Labeling landmarks lives under Annotations in Phase 3.
+  - [x] **Guide Pen** tool (key G) — separate tool from the regular Pen. Produces `role: 'guide'` paths that never promote to a panel. One click = single-point landmark (rendered as the blue node dot from NodesLayer); multiple clicks = guide polyline. Enter finalizes; Escape discards via the coalesced `guide-pen:<pathId>`.
+  - [x] **Compass** tool (key C) — drag from center; releases a closed guide circle as a 4-node cubic-bezier chain (`circleCommand` in commands.ts; ~0.027% radius error). Snaps both center and radius point to nodes. Numeric radius editing is deferred to a future Inspector enhancement.
+  - [x] **Snap targets extend to guides** — Canvas's `toToolEvent` runs `resolveSnap` (in `src/ui/canvas/snap.ts`) which checks (1) guide-role nodes, (2) guide × guide segment intersections (cubics flattened to 8 pieces, AABB-prefiltered line-line intersection), then falls through to grid. 8px screen threshold scaled to world via zoom.
+  - [x] Distinct guide styling in CSS (`.path--guide` muted blue dashed thinner stroke, `.node--guide` filled blue, `.preview--guide` for previews).
+  - [x] Renamed the doc-model `role: 'construction'` to `role: 'guide'` (breaking JSON change, acceptable — no real files yet). Side cleanup: regular Pen now starts paths with `role: 'panel'` directly, dropping the conflated "in-progress = construction" encoding.
+  - [ ] *Keyboard shortcuts for these new tools rationalized once full tool set exists. Current bindings: V select, P pen, G guide pen, C compass.*
+- [x] **Drafting essentials bundle** (shipped 2026-04-24 across 4a / 4b / 4c, from a follow-on /office-hours after Justin used the live tool):
+  - [x] **Guide Pen finalize fix** (4a) — Escape, Enter, right-click, and a "✓ finish" Inspector button all commit the active guide path; Cmd+Z still aborts via the existing coalesced entry. Pen tool's escape stays "abort" since panels need to close.
+  - [x] **Guide color → dark red** `#8b3a3a` (4a) — applied to `.path--guide`, `.node--guide`, `.preview--guide`. Resolved blue-on-blue collision with selection / handles / marquee / close-by-snap indicator.
+  - [x] **Panel move** (4b) — Select tool: click on a panel's outline / fill / interior, drag = translate every node of every selected panel by Δ. Click-and-drag in one motion ("click one, drag the group" when multiple panels selected). Shift-click toggles without dragging. Node-drag wins over panel-drag (existing branch order).
+  - [x] **Compass center landmark** (4c) — Compass commits a batch containing the circle (`circleCommand`) plus a 1-node `role: 'guide'` landmark at the center, one undo. Future enhancement: link center↔circle (needs a doc-model change, deferred).
+  - [x] **Radial tool** (4c) — Compass + Shift, sampled at pointer-down. Releases a 2-node guide line from center to direction-point. Both endpoints snap to nodes when hovered. Endpoint snap-to-circumference deferred to revisit if precision-on-circle matters in real use.
+  - [x] **Measured angles + clean circles** (4d, surfaced when Justin checked whether the radial actually produced *measured* angles — it didn't):
+    - Live readout chip during radial drag (HTML in foreignObject, counter-scaled). Always shows L (length) + θ (angle from horizontal). Also shows ψ (angle from prior radial) when the radial's center coincides with the start of an earlier 2-node guide line. Reference rays draw faintly during the drag — horizontal always, prior dashed.
+    - Ctrl-during-drag snaps the angle to 5° increments. Sampled per pointermove (releasable mid-drag). Readout shows "· snap" while active.
+    - NodesLayer hides nodes of closed guide paths whose pathId isn't selected — compass circles read as clean dashed rings, not 4-dot polygons. Snap still finds the cardinal positions (resolveSnap reads doc.nodes directly).
+    - PathsLayer renders a single whole-path hit-test for closed guides (click anywhere on the circle or interior → selects the path), skipping per-segment hit-tests since closed guides don't have first-class segments.
+    - Numeric override in Inspector deferred to maybe-future. CAD-style command-line entry explicitly out.
+- [x] **Guide hygiene (5a)** — Pen tool clicks on a guide segment snap precisely onto the guide line and drop a *panel* node at the projected point, instead of inserting a node into the guide path. The regular Pen never mutates `role: 'guide'` paths. Pen-on-panel-segment behavior (insert + de Casteljau split) is unchanged. Active-path close-by-snap uses the projected point too, so a click on a guide line near the first node still closes the panel cleanly. Shipped 2026-04-25 as a bug fix (Justin reported during live drafting).
+- [x] **Panel-bounding bundle (5b–5g)** — pen-tool measurement + topology hygiene, all shipped 2026-04-25.
+  - [x] **5b: pen-tool L/θ readout** — live length + angle-from-horizontal chip during pen draw, same chip style as the compass radial readout. CSS class renamed `.compass-readout*` → `.measurement-readout*` since two tools share it now.
+  - [x] **5c: hollow node dots** — nodes (panel + guide) render as transparent rings instead of solid dots, so lines passing through a node are visible all the way to the center. Selected state thickens the stroke; hit-testing preserved (transparent fill stays "painted" under `pointer-events: visiblePainted`).
+  - [x] **5d: Pen escape finalizes instead of aborts** — Escape, Enter, and right-click all commit the active draw and clear `activePathId`. Cmd+Z still walks back through coalesced entries. Drafting is multi-phase; a stray landmark or open polyline is valid output. Reverses 4a's "Pen tool's escape stays 'abort'" — the 500 ms coalesce window made abort counterintuitive once Justin started drafting in real sessions.
+  - [x] **5e: pen-down on a panel dot reuses the dot** — when the pen tool is not mid-draw and the click is on (or within `CLOSE_THRESHOLD` of) an existing panel-path node, start a new pen draw whose first node *is* that existing node, instead of creating a duplicate at the same position. Lets two panels share a vertex cleanly — moving it updates both. Mid-draw clicks unchanged; guide-dot direct hits unchanged (snap-to-position via `resolveSnap`); segment-branch clicks still win over node-reuse.
+  - [x] **5f: pen mid-draw join enforces no-forking (R16)** — mid-draw click on another *open* panel's endpoint merges the active draw into that panel and finalizes; two paths become one in a single batched undo entry. Reverse-when-needed merge keeps direction consistent (clicked node = START → append in order; clicked node = END → append in reverse). Behavior matrix: other panel open endpoint (no dup) → JOIN+finalize; other panel interior or closed → silent no-op; would dup a vertex → silent no-op; own first node (close-by-snap) → falls through to existing close; guide dot → falls through to existing add-node. Honors the new R16 invariant: a panel vertex holds at most 2 segments within its path.
+  - [x] **5g: pen close-on-loop via cross-panel join** — when the merge from 5f would close the loop back to its starting vertex (exactly one dup in the merged sequence AND `merged[0] === merged[length-1]`), drop the trailing dup and set `closed=true` instead of rejecting. Other dup configurations (interior fork) still reject silently. User scenario: draw [a,b], escape, draw [c,d], join to a → [c,d,b,a]; new draw from a, click c → closed quadrilateral [a,c,d,b], no orphan paths.
+- [x] **Panel outline self-intersection prevention** (shipped 2026-04-26) — fabric edges can't cross; a panel outline must be a simple polygon. Rule is panel-scoped (guides can cross each other freely; separate panels overlapping in the plane don't violate anything). Spec lived in `~/.gstack/projects/pattern-drafter-workspace/justin-main-design-20260425-225000.md` (replaced earlier 3-state "show red after the fact" UX after eng-review: PREVENT-during-action everywhere).
+  - [x] **Pen mid-draw click prevention** — `pathExtendWouldSelfCross` gates dispatch; preview line carries `preview--cross` class; `pen-offending-flash` highlights the specific earlier segment that's blocking, so the user isn't left guessing which click was the problem.
+  - [x] **Close-by-snap prevention** — `pathCloseWouldSelfCross` gates the `closed: true` dispatch; close indicator carries `pen-close-indicator--cross` class.
+  - [x] **Node drag prevention (clamp + elastic)** — `useSelectTool` builds candidate overrides per pointermove; `anyTouchingPanelWouldSelfCross` skips dispatch AND skips the `lastX/lastY` update so a future legal candidate applies the full accumulated delta in one dispatch (cursor moves freely; node freezes; node teleports back when cursor returns to a legal zone).
+  - [x] **Handle drag prevention** — same per-pointermove override-and-validate pattern for handleIn / handleOut updates.
+  - [x] Implementation: `panelHasSelfIntersection`, `flattenPath` (renamed from `flattenGuide`, default 16 pieces), `cubicHasSelfLoop`, `pathExtendWouldSelfCross`, `pathCloseWouldSelfCross`, `panelsTouchingNodes` in `src/model/panelGeometry.ts`. AABB-prefiltered pairwise; explicit adjacent-segment skip (adjacent cubic flattenings near a tangent-continuous join can be near-collinear with overlapping AABBs and false-positive without the skip).
+  - [x] Integration test: drives a would-cross node drag through `useSelectTool`, sees it rejected, then renders SA via `pathToValuePath().offset(1.5)` — asserts SVG starts with `M`, ends with `Z`, contains no `NaN`, and bbox grew by ~1.5 on every side. Tests the *protected-against* bug, not just the gate. Second test does the same via close-by-snap rejection followed by a legal close.
+- [x] **Component-level tests for tool interactions** (shipped 2026-04-26) — `usePenTool.test.tsx` covers close-by-snap (with and without crossing), segment hit-testing on guide and panel segments, mid-draw join (start/end/interior/closed), close-on-loop, intersection-check (extend + close), segment-split branch, escape-finalize, vertex sharing. `useSelectTool.test.tsx` covers node drag (clean / clamp / elastic / multi-select), handle drag (clean / clamp), open-path no-constraint, plus the SA-renders-clean integration test. New `useGuidePenTool.test.tsx` covers landmark / polyline / Escape / Enter / right-click finalize / no-close. New `useCompassTool.test.tsx` covers circle commit (4-node + center landmark), MIN_RADIUS click discard, Escape cancel, radial commit (2-node), Shift sampled at pointer-down only, Ctrl-snap to 5°, Ctrl release mid-drag. 145 → 204 tests.
+
+## Phase 3 — Domain Semantics (2–4 weeks)
+
+**Goal:** the canvas knows it's drawing clothes, not generic geometry.
+
+Canvas content taxonomy (finalized 2026-04-24):
+
+- **Panel** — persistent cut shape (what gets fabric)
+- **Guide** — persistent scaffolding (points/lines/curves/arcs; handled in Phase 2 follow-ups)
+- **Instrument** — drafting aids you wield; the instrument itself never becomes pattern content. Passive (rulers, french curves, protractor) align to read or trace; active (knife) align to act on the panel (new in Phase 3)
+- **Annotation** — things that live *on* a panel: darts, notches, seam markings, labels (new in Phase 3)
+
+### Architecture spec (locked 2026-04-27 by /plan-eng-review)
+
+**Panel as first-class entity.** New `Document.panels: Record<PanelId, Panel>`; each Panel has a `pathId` referencing one closed `role: 'panel'` DocumentPath. DocumentPath stays focused on geometry; annotations live on Panel.
+
+**Panel↔Path lifecycle invariant** (new R17):
+- Panel exists ↔ a closed role='panel' path exists.
+- Panel is *created* on close-by-snap or cross-panel join (the moments that flip `closed` to true).
+- Panel is *destroyed* when its underlying path is deleted (cascade).
+- Operations that would open a panel's path are **rejected at dispatch**, mirroring the R16 / self-intersection PREVENT-during-action pattern.
+
+**Annotation addressing.** All annotations key by **start-node-id of the edge**, matching the existing `edgeSeamAllowances` pattern in `document.ts`. Stable across topology changes; index-based addressing breaks the moment a node is inserted mid-edge.
+- Seam edge: `{ name, startNodeId, endNodeId }` — run from start through end along the panel's `nodeIds` order
+- Notch: `{ edgeStartNodeId, t }` — t in [0, 1] along that edge
+- Ease/gather: `{ fromNotchId, toNotchId, kind: 'ease' | 'gather', text? }` — between two notches
+- Dart: legs + tip as Points; mouth midpoint anchors to two leg-endpoint node IDs when legs land on the panel boundary
+- Landmark label: `{ pathId, nodeId, text }` for guide landmark dots
+- When a node is removed in a *legal* edit, annotations referencing it cascade-clean (silently dropped; surfaced in undo history with a descriptive label so Cmd+Z recovers them)
+
+**Copy / mirror semantics.** Both produce new Panel + cloned Path with new node IDs. Annotations re-keyed onto the cloned IDs and carry over. Seam-PAIR links do **not** carry (the copy's seams are unpaired by default; pairing is an explicit user action). Mirror reverses node order to preserve outward-facing winding; copy gets a `" (copy)"` label suffix.
+
+### Visual vocabulary spec (locked 2026-04-27 by /plan-design-review)
+
+**Annotation language: same two-color palette, hierarchy by SHAPE + WEIGHT.** Annotations are panel-black; no new colors. Matches paper-pattern tradition (printed patterns are monochrome, distinguished by glyph). Selection still blue (`#0a66c2`); hover thickens stroke by 0.5.
+
+| Annotation | Glyph | Stroke | Notes |
+|---|---|---|---|
+| **Seam edge** | Invisible by default; selected/hovered = thickened stroke + small label near midpoint | 1.75 on highlight | Pair indicator: tiny ↔ above label |
+| **Notch (single)** | Short tick perpendicular to seam, ~3mm at scale, pointing into panel | 1.25 | Pattern-drafting standard |
+| **Notch (double)** | Two parallel ticks, ~1.5mm apart | 1.25 | "Match this side" convention |
+| **Dart legs** | Two lines outline → interior tip | 1.25 @ opacity 0.8 | Slightly lighter than outline so they read as internal marks |
+| **Dart fold line** | Tip → mouth midpoint, dashed | 1.0 dasharray 3 2 | Dashed: you fold along it, not cut |
+| **Landmark label** | ~10–12px sans-serif text, offset upper-right of dot | n/a | Dot stays dark-red guide node; label is panel-black |
+| **Ease notation** | Bracket `[` between two notches + "EASE" or "EASE 0.6cm" | 1.0 | Bracket sits *outside* seam (away from interior) |
+| **Gather notation** | Bracket + squiggle marks `～～～` under it + "GATHER" or "GATHER 30→20" | 1.0 | Squiggle echoes fabric gathering |
+| **Grain line** | Two-headed arrow with crossbar stems | 1.25 | Pattern-drafting standard |
+
+**Instruments: skeuomorphic, gray, translucent.** Rendered with the *actual shape* of the tool (ruler with markings, french curve with real curvature, protractor with degree marks) so the user can align by eye. `fill: rgba(180,180,180,0.15)` + `stroke: rgba(60,60,60,0.6)` at 0.75. Distinctly *not* black, *not* dark-red — reads as "tool I'm holding," not "mark on paper." Dragging darkens stroke to opacity 1.0. **Knife active**: cursor → crosshair-with-blade-glyph; cut-line preview = red dashed (preview-error red, 1px); freed-piece pre-rotation preview = panel-black at 0.5 opacity.
+
+**Layer z-order (back to front):**
+1. Grid + rulers
+2. Guide paths + guide nodes (dark-red dashed)
+3. Panel paths + SA outlines (black)
+4. Annotations (darts/notches/ease/gather/labels) — panel-black, ON the panel
+5. Instruments (skeuomorphic, gray translucent) — ABOVE pattern content
+6. Selection rings + handles + mid-draw previews (blue)
+7. Measurement readouts + error flashes (foreignObject, counter-scaled)
+
+**Inspector restructure for Panel selection.** Collapsible accordion sections (one scroll surface, no tab state):
+```
+▼ Panel               ← open by default
+    Label  [_______]
+    Grain  [angle°] [reset]
+    SA     [1.5 cm] [global default]
+    [Mirror] [Copy] [Delete]
+▶ Seam edges (3)      ← collapsed by default
+▶ Annotations (5)     ← collapsed; counts of (notches, darts, ease, gather)
+```
+Section badges show counts; selected annotation auto-expands its section + scrolls into view.
+
+### Chunk sequence (each commits + checks in, like Phase 2)
+
+- [ ] **3.1 Panel entity + lifecycle invariants** — `Document.panels`, create-on-close, destroy-on-path-delete, open-rejection gates wired into `commands.ts` (foundation for everything below)
+- [ ] **3.2 Seam edges** — typed edge ranges (`{ name, startNodeId, endNodeId }`) on panels, with seam-pair links between two panels' edges
+- [ ] **3.3 Notches** — positioned via `{ edgeStartNodeId, t }`; single/double tick glyph perpendicular to seam
+- [ ] **3.4 Darts** — port sketch's 3-phase dart tool + `dartExtension.ts` SA-cutline math; dart-on-seam interaction with seam consumption
+- [ ] **3.5 Landmark labels** — labels on guide landmark dots (cheap, orthogonal to panel work)
+- [ ] **3.6 Ease + gather notations** — bracket-and-text glyphs between notch pairs (no geometry; pure annotation)
+- [ ] **3.7 Seam-pair validator** — port sketch's `seamMatching.ts`; rewire from segment-index to start-node-id addressing; "walk the seams" is the validator surfaced as a UI workflow, not a separate op
+- [ ] **3.8 Instruments — passive** — rulers + protractor first; french curves with trace-to-cubic-chain last (trace produces real path output via least-squares fit, sub-0.1 mm error at garment scale)
+- [ ] **3.9 Instrument — active: knife** — its own design conversation before code. Open spec questions: cut-fully-through vs partial slash, pivot at un-cut end vs anywhere, freed-piece-becomes-Panel-automatically. Defer to its own /office-hours when 3.1–3.8 land.
+
+### Failure modes (Phase 3)
+
+- **Open-rejection gate misses a path** → `panel.pathId` points at a now-open path; renderer crashes. *Mitigation:* lifecycle gated through `commands.ts`; same dispatch-validation discipline as self-intersection prevention.
+- **Seam-pair length mismatch on closed pattern** → user prints unreachable garment. *Mitigation:* validator (3.7) flags before export.
+- **Annotation cascade-clean fires silently** → user loses an annotation without notice. *Mitigation:* surface in undo history with a descriptive label so Cmd+Z recovers.
+- **Mirror node-order reversal drops orientation** → SA renders inward instead of outward. *Mitigation:* integration test (mirror panel → render SA → assert bbox grew on every side), same shape as existing self-intersection-prevention SA test.
+
+### Unresolved (deferred, not blocking)
+
+- Knife UX deep spec — its own design conversation when 3.9 is up next
+- Ruler tick-mark density at extreme zoom — defer until ruler-instrument actually built; iterate from real use
+- Annotation visibility toggle (global "hide all annotations" view for clean pattern preview) — likely needed pre-export; defer to Phase 5
+
+## Phase 4 — Persistence + Auth (1–2 weeks)
+
+**Goal:** Justin logs in from any machine and his patterns are there.
+
+- [ ] Users table, session tokens, login/register/logout (port from sketch; rate-limit)
+- [ ] Patterns table (JSONB document; one row per saved pattern)
+- [ ] Save / load / rename / delete pattern endpoints
+- [ ] Auto-save (debounced) so Justin doesn't lose work
+- [ ] Pattern list UI
+- [ ] **Server-side integration tests** (auth, pattern CRUD — sketch had none; we fix that)
+
+## Phase 5 — Export (1 week)
+
+**Goal:** a pattern Justin can print and sew.
+
+- [ ] SVG export (single panel + multi-panel layout)
+- [ ] PDF export, tiled for home printers (A4/Letter, with alignment markers)
+- [ ] Print-preview UI with scale verification square ("this square should measure 1 inch")
+- [ ] Measurement units (metric/imperial) toggle
+
+## Phase 6 — First Real Pattern (1–2 weeks)
+
+**Goal:** Justin re-drafts his trouser in the new tool, from scratch, using Cornelius Quiring's method, on paper-beating workflow.
+
+- [ ] Redraft the TextileBlog men's trouser manually in the tool (no parametric yet)
+- [ ] Iterate on fit with a real printout + mockup sew
+- [ ] Write `context/user-research.md` with learnings from the self-use (treat self as first user study)
+- [ ] Decide: is the tool good enough to show to one other person?
+
+## Phase 7 — First External User (ongoing)
+
+**Goal:** complete the assignment from the design doc — get one non-Justin hobby sewist to use the tool and report back.
+
+- [ ] Do the weekly assignment: find and talk to one hobby sewist (see design doc → The Assignment)
+- [ ] Share tool with one interested hobby sewist; observe (don't demo)
+- [ ] Capture verbatim feedback in `wiki.md` → User Research
+- [ ] Triage: what are they asking for that's actually a v1 gap vs. a v2 feature?
+
+## Deferred Quality Concerns (revisit before Phase 7 / during polish pass)
+
+Non-blocking quality issues that shouldn't ship to a second user as-is. Not full features — fit-and-finish.
+
+- **Seam-allowance rendering on self-intersecting panels** — `Path.offset()` uses polygon-clipping's union, which treats a self-intersecting outline as overlapping regions and produces visually-wrong (often loopy) SA output. **No longer reachable through user action** as of 2026-04-26 (self-intersection prevention shipped at all four user-action sites: pen click, close-by-snap, node drag, handle drag). The bug remains in `Path.offset()` for any future load path (imported file, JSON paste, pre-invariant saved file), but until users have files at all this is not load-bearing. Revisit if/when persistence ships. Original noted 2026-04-24 by Justin: "the seam allowance goes crazy when you do it. I dislike the visual effect."
+- **Per-edge SA rendering** — the document model holds per-edge SA overrides already (Phase 2F's `edgeSA` helper), but `PathsLayer` currently calls `Path.offset()` with the path-level default and renders one uniform offset per panel. Per-edge variation would need either (a) a piecewise-offset algorithm that handles join geometry, or (b) explicit per-edge segment offsets joined manually. Real cost is moderate — not blocked on anything else. Defer to polish.
+- **Per-edge SA editing UI** — when the rendering above exists, expose per-edge SA in the Inspector's segment-selected branch (input + reset-to-inherit). Trivial once rendering works.
+
+## Deferred (explicitly not in scope for v1)
+
+- Parametric auto-draft from measurements + drafting method
+- Multi-system support per garment (Aldrich vs. Armstrong vs. TextileBlog for the same garment)
+- Community pattern library / marketplace
+- 3D preview or drape simulation
+- Mobile-first UI (responsive is fine; mobile-optimized is not)
+- Team accounts, collaboration, real-time multi-user editing
+- Commercial features (billing, subscriptions, paid patterns)
+
+See `rules.md` → Anti-patterns for *why* each of these is deferred.
+
+## Open Decisions (non-blocking, revisit as we code)
+
+1. **Canvas tech (SVG vs. 2D Canvas).** Default recommendation: SVG. Revisit only if you hit a real perf wall.
+2. **State mgmt shape** — Zustand with one store + slices is the default. Consider XState only if editor-mode logic gets complex.
+
+## Decisions Log
+
+| Date | Decision | Why |
+|------|----------|-----|
+| 2026-04-23 | Rebuild approach B (clean, backend day 1) | Multi-machine need makes local-first invalid; refactor inherits sketch's structural debt |
+| 2026-04-23 | TypeScript with pragmatic strict (any at boundaries OK) | Domain is type-shaped; rebuild benefits from type safety; Justin confirmed after discussion |
+| 2026-04-23 | Parametric generation deferred past v1 | Insufficient public procedures; moot without great drafting table; drafting table is valuable alone |
+| 2026-04-23 | Object-model DSL kept; generative procedure DSL deferred | These are different DSLs — sketch conflated them |
+| 2026-04-23 | Backend + auth + DB from day 1 | Justin needs multi-machine access (real user requirement) |
+| 2026-04-23 | Rebuild location: rename sketch → `pattern-drafter-sketch/`, claim `pattern-drafter/` | Justin's preference; cleanest naming; same Fly.io app, same GitHub repo |
+| 2026-04-23 | Product name kept as "pattern-drafter" | No rename needed |
+| 2026-04-23 | GitHub repo: same as sketch, clean-slate first commit, private | Preserves project identity; `sketch-final` tag will preserve history before clean-sweep |
+| 2026-04-23 | Deployment: same Fly.io app as sketch | Continuity; same URL/DNS |
+| 2026-04-24 | Phase 1 shipped; sketch-final tag preserves prior history | Clean-slate `main`; shell deployed and healthy |
+| 2026-04-24 | Phase 2 split into 5 reviewable chunks (2A–2E) | 2–4-week phase too large for single drop; each chunk commits + checks in |
+| 2026-04-24 | Chunk 2A: geometry ported + document model scaffolded | Foundation before UI; sketch geometry proven correct; store is single source of truth (R5) |
+| 2026-04-24 | Chunk 2B: canvas + layers + pan/zoom/grid/rulers | Navigable drafting table; layer groups reserved for Phase 2C/Phase 3 content; grid in world space with non-scaling stroke, rulers in screen space |
+| 2026-04-24 | Chunk 2C: commands, dispatch, renderer, select/line/curve tools | Drawing, selecting, moving, deleting works end-to-end; commands are pure apply+invert (ready to plug into 2D history stack); tool logic lives in hooks that expose ToolHandle |
+| 2026-04-24 | Chunk 2D: history + undo/redo + inspector | dispatch(cmd, {coalesceKey}) merges rapid same-key entries (drag-move, handle-drag, numeric edit); keyboard Cmd/Ctrl+Z/Y; single-node x/y inputs dispatch via coalesce so bursts of typing = 1 undo; R8 "domain op = one undo entry" served by coalescing batches of low-level updates |
+| 2026-04-24 | Chunk 2E: local JSON save/load closes Phase 2 | serialize + strict parse (version=1, shape-checked, path→node refs validated); save = Blob download, load = file input; loading replaces the doc and clears history |
+| 2026-04-24 | Chunk 2F: realign drawing UX to sketch (drops click-drag curve tool) | After 2C diverged from sketch-refined behavior (close-by-snap missing, curve tool wrong shape), ported the sketch model: pen tool only (close-by-snap 1.5 cm, escape discards, no Enter, all clicks one undo via coalesce), curves via segment-select + drag handles + L↔C toggle (double-click or Inspector); per-path/per-edge SA storage in doc model (edgeSA helper); global SA cut/sew display toggle in the header |
+| 2026-04-24 | Construction geometry: separate Construction Pen tool (not a pen mode-toggle) | Justin preferred a distinct tool over a modifier/toggle — clearer UX while the tool set is still small. Revisit keymap/consolidation after the full tool set exists. |
+| 2026-04-24 | Drop standalone Landmark tool; single-click Construction Pen produces a landmark dot | "Landmark" is a concept (a single-point construction mark), not a separate tool. One click → dot; N clicks → polyline/curve. Avoids category bloat. |
+| 2026-04-24 | Canvas content taxonomy: Panel / Construction / Overlays / Annotations | Four user-recognizable categories drive tool-to-category mapping, styling, inspector layout, snap rules. Overlays (rulers / french curves) are transient; other three persist. Annotations live on panels. |
+| 2026-04-24 | Phase 3 adds Overlays category: rulers + french curves | Drafting-aid analogues (movable, non-persisting). Distinct from Construction (persistent scaffolding). Tools snap to them while they're positioned. |
+| 2026-04-24 | Rename "Construction" → "Guide" (user-facing and data-model); "Overlay" → "Instrument" | "Construction" collides with sewing-assembly language ("garment construction"); "guide" matches "guideline" in drafting textbooks and reads unambiguously. "Overlay" felt like software/CAD jargon; "instrument" is the real-world drawing-instruments term. Rename both stack layers for grep consistency — no saved JSON files yet so the cost is zero. |
+| 2026-04-24 | French curves produce cubic chains via fit, not a new geometry primitive | Office-hours session pressure-tested whether our cubic-handle tool is adequate or whether french curves are worth building. Call: worth building. Math: cubics are polynomial, templates are typically rational (conic sections) so an *exact* match is impossible; but least-squares fit per landmark-pair gets sub-0.1 mm error at garment scale — visually indistinguishable. Output stored as an ordinary editable cubic chain; template itself is the Phase 3 Instrument. No doc-model change needed. |
+| 2026-04-24 | Insert-point-on-segment: two entry points, pen-tool and Inspector | Justin wants the split to happen as a "natural effect of clicking center of a line while in pen mode." Pen-tool click on a segment projects to nearest point on segment and inserts a node; cubic segments split preserving curvature (de Casteljau). Active path rule: if mid-draw of another path, the split is purely local — does NOT extend the active path to the inserted point. One click does one thing. Inspector "Insert Point" button does the same with t=0.5 for a clean bisect UX. |
+| 2026-04-24 | Panel outline self-intersection: visual feedback, not blocking | Fabric-edge rule narrows to "a panel outline must be a simple polygon" — guides can cross freely; separate panels overlapping in the plane are fine. Three-state UX: mid-draw preview-line colors red on would-cross; close-by-snap gates close on any pair-crossing; edit-time renders offending segments red + warns in Inspector. Never blocks a click — user sees the problem and fixes it. Blocking requires the user to figure out *why* they can't click; red is self-explanatory. Ancillary: SA rendering goes visibly wrong on self-intersecting panels — captured as a deferred quality concern. |
+| 2026-04-24 | Guide geometry shipped (3 commits: pen+styling+rename, compass, snap) | Decided during implementation to also fix the regular Pen's "in-progress = construction" encoding — after the rename, conflating in-progress panels with guides was both semantically wrong and visually wrong (in-progress panels would render dashed blue). Pen now starts paths as `role: 'panel'` from click 1; only `closed` toggles on close-by-snap. Cubic circles use kappa-handle approximation; snap implemented Canvas-side so all tools benefit. |
+| 2026-04-24 | Drafting essentials bundle shipped (4a/4b/4c) after Justin used the live tool | Real friction surfaced by hands-on use, not by tests. Five fixes spanning UX (Guide Pen finalize), visual (guide color collision), interaction (panel-move), and feature (Compass center + Radial). Adversarial spec review caught five ambiguities (edge cases, disambiguation, modifier sampling, multi-circle picking) before coding. Reaffirmed R2: joyful iteration is the product, and "iterate" includes the tools that produce the iterations. Standing assignment from 2026-04-23 (find one non-Justin hobby sewist) still pending. |
+| 2026-04-25 | Guide hygiene (5a): regular Pen never mutates guides | Justin reported during live drafting that pen-clicks on a guide line were inserting nodes *into* the guide. The Pen's segment branch was role-blind. Fix: branch by `path.role`. Panel segment → existing insert/split. Guide segment → project the click onto the guide line, use the projected point as the click position, proceed with normal pen logic (extend active path or start a new panel). Net effect: panels can be drawn precisely on top of guide geometry without ever altering the guide. Same change carries snap-to-guide-line for the regular pen, since segment hit-testing already has 8 px tolerance. |
+| 2026-04-24 | Compass measured angles (4d) | Justin asked "describe how the compass can make MEASURED angles?" — the honest answer was "it can't yet." Radial mode released a line in *roughly* the dragged direction with grid-snap-only precision (~2.86° resolution at r=10 cm with 0.5-cm grid) and zero readout. 4d adds the missing measurement layer: live L/θ readout, Ctrl-snap to 5°, prior-radial as a second reference when relevant. Also clean-circle rendering (cardinal nodes hidden by default — Justin's "don't put points on circle exterior until user wants them"). Numeric Inspector override is the natural next step if measured-from-readout proves not enough. |
+| 2026-04-25 | Panel-bounding bundle (5b–5g) shipped | After 5a, ran a follow-on pass on pen-tool ergonomics + panel topology surfaced by Justin using the live tool. 5b adds the same L/θ readout the compass already had — measurement parity across drawing tools. 5c (hollow nodes) so passing-through lines read continuously to the node center. 5d reverses 4a's "escape = abort" once the coalesce window made it counterintuitive — multi-phase drafting wants finalize, not nuke. 5e/5f/5g are one logical move split across three commits: vertices can be shared between panels (5e), mid-draw joins instead of forking (5f), and the join can also close the loop on the originating vertex (5g). Together they enforce R16 (panel vertex ≤2 segments within a path) at the *interaction* level, not just as a post-hoc lint. |
+| 2026-04-25 | R16 added: panel vertices ≤2 incident segments within a path | Captured the invariant 5f and 5g enforce. Fabric edges don't fork; tools that could create a fork must JOIN, REJECT, or ROUTE AROUND. Cross-panel vertex sharing is fine — each panel keeps its own ≤2 count locally. Same invariant viewed from another angle as the (still-open) self-intersection prevention work. |
+| 2026-04-25 | Pen escape: finalize, not abort (5d, reverses 4a) | 4a had set Escape to discard the active path via the coalesced `pen:<pathId>` entry. In live use the 500 ms coalesce window meant click → pause → click → Escape left a one-dot path on the canvas (the second click started a fresh entry; Escape only killed it). Drafting wants to keep the clicks the user committed; Cmd+Z still walks them back individually. Net rule: Pen finalizes on Escape/Enter/right-click; only Cmd+Z erases. |
+| 2026-04-25 | Self-intersection: PREVENT, not warn (eng-review redirect) | Original 3-state UX (red preview / red close indicator / red rendering of broken panels / Inspector warning) was rejected during eng-review. Justin: "either you PREVENT it during editing, or we just skip and move on." The middle ground is UI noise without fixing the underlying SA-render-goes-loopy artifact. Locked: live prevention at all four sites (pen click, close-by-snap, node drag, handle drag). The doc model invariant becomes "closed panels are simple polygons, always." Edit-time warning UX dropped entirely. Cubic flattening bumped 8→16 + per-cubic self-loop check after subagent flagged the false-negative gap; explicit pair-skip on adjacent segments after subagent flagged adjacent-cubic AABB false positives. |
+| 2026-04-26 | Self-intersection prevention shipped (panelGeometry.ts + 4 tool sites + 36 tests) | All four prevention sites done in one PR per the locked plan. Helpers: `panelHasSelfIntersection`, `flattenPath` (renamed from snap.ts's `flattenGuide`, 16 pieces default), `cubicHasSelfLoop`, `pathExtendWouldSelfCross`, `pathCloseWouldSelfCross`, `panelsTouchingNodes`. Prevention: pen mid-draw + offending-segment red flash; close-by-snap; node-drag clamp+elastic (skip dispatch AND skip lastX/lastY update so a future legal candidate applies the full pent-up delta); handle-drag clamp. Tests: 13 panelGeometry unit cases, 5 usePenTool integration cases extending the existing test, 9 useSelectTool cases (new file) including the SA-renders-clean-after-prevention integration test the design doc called for. 145 → 190 tests green. Deferred quality concern about loopy SA reframed: no longer reachable through user action; only reachable via load paths that don't exist yet. |
+| 2026-04-26 | Adjacent-segment skip bug fix | First live-tool session after deploying self-intersection prevention surfaced a case where a cubic edge overshot its endpoint and crossed the adjacent vertical edge — Justin reproduced via screenshot. Root cause: the adjacent-segment skip rule was blanket-ignoring all (segment a, segment a+1) flattened-piece pairs, instead of just the single pair touching the shared vertex. Fix narrowed the skip to `i === lastIdx[sa] && j === firstIdx[sb]`. The original false-positive defense (tangent-continuous adjacent cubics) still works because it only ever needed the boundary pair. Regression test mirrors the screenshot geometry. |
+| 2026-04-26 | Phase 2 closed; per-edge SA → Deferred Quality Concerns | Phase 2 follow-up "component-level tests" closed by adding `useGuidePenTool.test.tsx` (6 cases: landmark/polyline/Escape/Enter/right-click/no-close) and `useCompassTool.test.tsx` (7 cases: circle commit/MIN_RADIUS/Escape/radial commit/Shift sampled at down/Ctrl-snap/Ctrl-release). All four tools now have component-level coverage. Per-edge SA rendering and editing UI moved to Deferred Quality Concerns — both are fit-and-finish, not load-bearing for the drafting table. Drafting table is feature-complete for Phase 2's stated scope. 145 → 204 tests green. Next: Phase 3 (first-class panels → seams/darts/notches → instruments). |
+| 2026-04-27 | Slash-and-pivot moves from "domain operations" into Instruments as the **knife** | Of the listed domain ops, slash-and-pivot is the only one that maps to a *physical drafting action* (scissors along a line, then rotate the freed piece). Mirror / add-ease / gather are naturally menu commands on a selection. Modelling slash-and-pivot as an instrument lets the interaction echo the paper workflow — wield the knife, hover the cut line, click to cut, drag the freed side around the pivot. Side effect: the Instrument category now spans *passive* (rulers / french curves / protractor — align to read or trace) and *active* (knife — align to act on the panel). The instrument itself still never becomes pattern content; only its effect can modify a panel. Captured before /plan-eng-review so the architecture review locks against the right scope. |
+| 2026-04-27 | Ease + gather are annotations, not domain operations; add **copy panel** | Reframed during pre-eng-review scope review. Drafting produces the *paper pattern*; ease and gather are sewing-time instructions written on the pattern ("gather between these notches" / "ease this seam"), not geometric transforms applied at draft time. They live alongside notches, dart annotations, and landmark labels. (Sleeve-cap-style ease, where the cap is intentionally drawn longer than the armscye, is just *where the line was drawn* — it's not a separate op either.) Side effect: copy and mirror are the only "ops" that survive — and they're generic editor moves (every vector tool has them), not drafting-domain logic. Walk-the-seams is the seam-pair validator viewed as a workflow, not a separate op. |
+| 2026-04-27 | Drop "Domain operations as first-class commands" as a Phase 3 category | Once slash-and-pivot left for Instruments and ease+gather left for Annotations, the only residents were copy and mirror — both generic editor primitives. Keeping the bucket would be category-bloat: it'd suggest "domain ops" is a thing the architecture needs to model when it's just "the things you can do to a panel." Folded copy + mirror under panel-as-first-class as basic ops that follow from making the panel an object. Phase 3 now has four clean categories: panels (incl. basic ops), annotations, instruments, validator. |
+| 2026-04-27 | Phase 3 architecture locked via /plan-eng-review | Separate Panel entity (Document.panels keyed by PanelId, each Panel references one PathId) over extending DocumentPath in-place. Reason: annotations are conceptually distinct from path geometry; keeping them in their own typed bucket prevents DocumentPath from becoming a junk drawer of optional fields that only matter when role='panel'. Matches sketch's proven Panel + PanelOptions shape (port path is shorter). Cost: one new invariant — Panel↔Path lifecycle (R17, see rules.md) — enforced via dispatch-rejection of operations that would open a panel's path, mirroring the R16 / self-intersection PREVENT-during-action pattern. All annotations key by start-node-id (matches existing edgeSeamAllowances pattern; durable across topology edits). Chunk sequence 3.1–3.9 under Phase 3 above. |
+| 2026-04-27 | Phase 3 visual language locked via /plan-design-review | Annotations use the same two-color palette as Phase 2 (panel-black / dark-red guide / blue selection), with hierarchy by SHAPE + WEIGHT — no new annotation color. Reason: matches paper-pattern tradition (printed patterns are monochrome, distinguished by glyph), preserves Phase 2's restrained drafting-board aesthetic, and scales cleanly as new annotation kinds get invented. Cost: forces real glyph design taste for each annotation (no "just slap a color on it" shortcut). Per-annotation glyph table locked under Phase 3 → Visual vocabulary spec. Instruments: skeuomorphic, translucent gray, distinct from panel/guide vocabulary (rendered with actual tool shape so user can align by eye). Inspector: collapsible accordion sections (Panel / Seam edges (n) / Annotations (n)), one scroll surface, no tab state. Layer z-order specified. Initial design score 5/10 → 8.5/10. |

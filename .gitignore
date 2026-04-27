@@ -1,0 +1,12 @@
+# Nested repos — each has its own history
+/pattern-drafter/
+/pattern-drafter-sketch/
+
+# Node
+node_modules/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json
+
+# Obsidian vault (UI state churns; opt-in tracking later if desired)
+.obsidian/
