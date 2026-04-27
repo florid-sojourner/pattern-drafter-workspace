@@ -166,7 +166,7 @@ Section badges show counts; selected annotation auto-expands its section + scrol
 
 ### Chunk sequence (each commits + checks in, like Phase 2)
 
-Reordered 2026-04-27: seam edges (3.7) and seam-pair validator (3.8) pushed to the bottom — both need a serious feedback cycle with Justin before code lands. Passive instruments now sit just above the seam pair so non-seam annotation work happens contiguously.
+Reordered 2026-04-27 per Justin: seam edges and seam-pair validator at the very bottom — both need a serious feedback cycle before code lands. The instruments block (passive + active knife) sits just above the seam pair so all instrument work runs contiguously.
 
 - [x] **3.1 Panel entity + lifecycle invariants** (2026-04-27) — `Document.panels: Record<PanelId, Panel>` + addPanel/removePanel/updatePanel commands. apply rejects updatePath that would open a paneled path (closed→open, role→guide, nodeIds<3) and rejects removePath when a Panel still references the path (caller must batch removePanel first). closePanelCommand helper. Pen close-by-snap + cross-panel-join close-on-loop batch addPanel into the close (one undo). deletePathsCommand + deleteNodesCommand cascade Panel removal when affected paths no longer qualify. documentIO round-trips panels (validates pathId points at a panel-qualifying path; rejects two panels on one path; treats absent panels field as `{}` for forward compat). 233 tests green (204 → 233; new model/__tests__/panelLifecycle.test.ts + extensions to usePenTool.test.tsx + documentIO.test.ts).
 - [ ] **3.2 Notches** — positioned via `{ edgeStartNodeId, t }`; single/double tick glyph perpendicular to seam (was 3.3)
@@ -174,20 +174,20 @@ Reordered 2026-04-27: seam edges (3.7) and seam-pair validator (3.8) pushed to t
 - [ ] **3.4 Landmark labels** — labels on guide landmark dots (cheap, orthogonal to panel work; was 3.5)
 - [ ] **3.5 Ease + gather notations** — bracket-and-text glyphs between notch pairs (no geometry; pure annotation; was 3.6)
 - [ ] **3.6 Instruments — passive** — rulers + protractor first; french curves with trace-to-cubic-chain last (trace produces real path output via least-squares fit, sub-0.1 mm error at garment scale; was 3.8)
-- [ ] **3.7 Seam edges** — typed edge ranges (`{ name, startNodeId, endNodeId }`) on panels, with seam-pair links between two panels' edges. **Pending feedback cycle with Justin before code lands.** (was 3.2)
-- [ ] **3.8 Seam-pair validator** — port sketch's `seamMatching.ts`; rewire from segment-index to start-node-id addressing; "walk the seams" is the validator surfaced as a UI workflow, not a separate op. **Pending feedback cycle with Justin before code lands.** (unchanged number; was 3.7 in the prior list)
-- [ ] **3.9 Instrument — active: knife** — its own design conversation before code. Open spec questions: cut-fully-through vs partial slash, pivot at un-cut end vs anywhere, freed-piece-becomes-Panel-automatically. Defer to its own /office-hours when 3.1–3.8 land.
+- [ ] **3.7 Instrument — active: knife** — its own design conversation before code. Open spec questions: cut-fully-through vs partial slash, pivot at un-cut end vs anywhere, freed-piece-becomes-Panel-automatically. **Run /office-hours with Justin before code lands.** (was 3.9; moved above seams per Justin 2026-04-27 so the instruments block stays contiguous and seam work is the very last Phase 3 item)
+- [ ] **3.8 Seam edges** — typed edge ranges (`{ name, startNodeId, endNodeId }`) on panels, with seam-pair links between two panels' edges. **Pending feedback cycle with Justin before code lands.** (was 3.2)
+- [ ] **3.9 Seam-pair validator** — port sketch's `seamMatching.ts`; rewire from segment-index to start-node-id addressing; "walk the seams" is the validator surfaced as a UI workflow, not a separate op. **Pending feedback cycle with Justin before code lands.** (was 3.7)
 
 ### Failure modes (Phase 3)
 
 - **Open-rejection gate misses a path** → `panel.pathId` points at a now-open path; renderer crashes. *Mitigation:* lifecycle gated through `commands.ts`; same dispatch-validation discipline as self-intersection prevention.
-- **Seam-pair length mismatch on closed pattern** → user prints unreachable garment. *Mitigation:* validator (3.8) flags before export.
+- **Seam-pair length mismatch on closed pattern** → user prints unreachable garment. *Mitigation:* validator (3.9) flags before export.
 - **Annotation cascade-clean fires silently** → user loses an annotation without notice. *Mitigation:* surface in undo history with a descriptive label so Cmd+Z recovers.
 - **Mirror node-order reversal drops orientation** → SA renders inward instead of outward. *Mitigation:* integration test (mirror panel → render SA → assert bbox grew on every side), same shape as existing self-intersection-prevention SA test.
 
 ### Unresolved (deferred, not blocking)
 
-- Knife UX deep spec — its own design conversation when 3.9 is up next
+- Knife UX deep spec — its own /office-hours when 3.7 is up next (knife sits between passive instruments and seams in the new ordering)
 - Ruler tick-mark density at extreme zoom — defer until ruler-instrument actually built; iterate from real use
 - Annotation visibility toggle (global "hide all annotations" view for clean pattern preview) — likely needed pre-export; defer to Phase 5
 
