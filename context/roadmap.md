@@ -242,6 +242,8 @@ Reordered 2026-04-27 per Justin: seam edges and seam-pair validator at the very 
 - [ ] Capture verbatim feedback in `wiki.md` → User Research
 - [ ] Triage: what are they asking for that's actually a v1 gap vs. a v2 feature?
 
+Justin's own running tips/quirks for the eventual user guide live in `wiki.md` → User Guide Notes (separate from User Research, which is for external-user verbatim).
+
 ## Deferred Quality Concerns (revisit before Phase 7 / during polish pass)
 
 Non-blocking quality issues that shouldn't ship to a second user as-is. Not full features — fit-and-finish.

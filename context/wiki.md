@@ -146,6 +146,12 @@ _Empty. First assignment (see `roadmap.md` → Phase 7 / design doc → The Assi
 **Surprises (things they did or said I didn't expect):**
 ```
 
+## User Guide Notes (collecting for eventual user docs)
+
+Justin's own running list of tips, quirks, and gotchas that should land in a written user guide later. Add entries as they surface during real drafting; keep them short and behavior-focused.
+
+- **Moving points after curves exist:** once the panel has curved segments, moving a point may be restricted in some directions to keep the outline from self-intersecting. If a direction is blocked, try a different direction, or straighten the affected lines first and then move the point.
+
 ## Related external resources
 
 - **Cornelius Quiring's tutorial series** — Justin's source for the men's trouser method. Paid private tutorial.
