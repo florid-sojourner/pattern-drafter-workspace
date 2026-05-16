@@ -1,0 +1,23 @@
+- [Justin's frame for pattern-drafter rebuild](user_pattern_drafter_frame.md) — rebuild as viable product with OSS/hobby fallback; forcing questions still apply
+- [Run discovery skills before writing plan artifacts](feedback_run_skills_before_writing.md) — when user asks for skills-driven planning, run skills FIRST; don't pre-fill roadmap/wiki/rules with guesses
+- [Port UX from Justin's sketches faithfully](feedback_port_ux_faithfully.md) — read sketch interaction code BEFORE writing rebuild tools; match refined behavior; observations OK, silent reinvention not
+- [Sketch refined features (rebuild port list)](project_sketch_refined_features.md) — pen/points w/ close-by-snap, curves-via-drag-handles, darts, cut-vs-sew toggle are refined; toolbar etc. are not
+- [Never add Co-Authored-By Claude trailer](feedback_no_claude_coauthor.md) — author commits as Justin only; never append the Claude trailer
+- [Push commits to origin regularly](feedback_push_regularly.md) — don't accumulate local-only commits; fast-forward push after each commit/small batch on solo private repos
+- [Seam-pair validator scope is in doubt](project_seam_validator_scope_doubt.md) — Justin unsure if 3.9 is worth building; drafting procedures may keep matching seams equal by construction
+- [Ask for artifacts before diagnosing visual bugs](feedback_ask_for_artifacts.md) — for PDF/image/output defects, ask for buggy artifact + reference + source JSON before code-reading; don't present inference as diagnosis
+- [Change the input, not the algorithm, when topology is hostile](feedback_change_input_not_algorithm.md) — after 2 fix attempts that don't improve the metric, the input shape is wrong; fix it upstream
+- [Path.offset polygon-clipping output is hostile to cubic re-fit](project_offset_polygon_clipping_topology.md) — don't re-attempt least-squares fit of the polyline; right fix is segment-aware offsetting
+- [Don't invent visual constants](feedback_no_made_up_visual_constants.md) — ground glyph dimensions in real references (Big-Four, textbooks, sketch port) or flag uncertainty; prefer SA-fraction over fixed mm when shape should preserve across sizes
+- [Iterate fast — don't moralize about migration timing](feedback_iterate_fast_no_migration_handwringing.md) — early-phase data-shape changes, just do the work; no "do it now or pay a migration tax" lectures
+- [patternsApi.get bypasses documentIO.parse](project_patternsapi_bypasses_parser.md) — new doc fields must be normalized at the store boundary, not just in the parser; see `normalizeLoadedDocument` in store.ts
+- [Hold scope discipline on phase branches](feedback_hold_scope_on_phase_branches.md) — phase branches ship only the phase's scope; drafting-table polish belongs separately
+- [Hub is a two-door fork, not a workspace](project_hub_is_a_fork.md) — `/hub` shows Drafting and Measurements as mutually-exclusive doors; cross-pollination only inside one door
+- [Measurements are an optional drafter convenience](project_measurements_are_optional_convenience.md) — wearers + measurements never gate drafting; the competitor is the slip of paper, not other apps
+- [Justin is disorganized with paper and handwriting](user_paper_handwriting_disorganized.md) — measurements feature motivated by losing slips of paper; positioning should lean into "digital notebook" not "drafting prep"
+- [Measurements are an open-keyed bag with systems](project_measurement_bag_model.md) — wearer bag rendered as per-system sections; entry identity is (systemId, key); v1 ships empty bag + user-CRUD on systems; "system" not "template"; built-ins deferred
+- [Flag domain assumptions in pattern-drafting contexts](feedback_flag_domain_assumptions.md) — when proposing models in sewing/measurement/drafting-system domains, name assumptions and invite correction rather than presenting confident simplifications
+- [Wearer editor redesign shipped (2026-05-15)](project_wearer_editor_redesign_shipped.md) — chunk 4B.9 on phase-4b-wearers: Variant A single-column edit-in-place; soft sessions; figureVariant gone; verb-form doors; 448 → 547 tests
+- [Hub door labels are verb phrases](project_door_labels_are_verbs.md) — door = action (Draft Patterns / Measure Wearers); inside-door breadcrumb root = noun (Patterns / Wearers)
+- [Anatomy diagrams are system-wide, not per-wearer](project_anatomy_is_system_wide_not_per_wearer.md) — figureVariant removed from WearerDocument; if anatomy returns it's keyed to the measurement system
+- [Justin is solo tester; destructive migrations OK](project_solo_tester_destructive_migrations_ok.md) — no prod data; prefer drop-and-recreate over careful in-place transforms when it simplifies
